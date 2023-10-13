@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Auth</title>
+</head>
+<body>
+    <h1>Firebase Authentication</h1>
+
+    <h2>Mode</h2>
+    <form id="mode-form">
+        <label for="mode">Mode</label>
+        <select name="mode" id="mode">
+            <option value="deploy">deploy</option>
+            <option value="emulators">emulators</option>
+            <option value="serve">serve</option>
+        </select>
+    </form>
+
+    <h2>Signup</h2>
+    <form id="signup-form">
+        <label for="username">Username</label>
+        <input type="username" id="username" required><br><br>
+
+        <label for="signup-email">Email:</label>
+        <input type="email" id="signup-email" required><br><br>
+
+        <label for="type">Type</label>
+        <input type="type" id="type" required><br><br>
+
+        <label for="signup-password">Password:</label>
+        <input type="password" id="signup-password" required><br><br>
+        
+        <button type="submit">Signup</button>
+    </form>
+
+    <h2>Login</h2>
+    <form id="login-form">
+        <label for="login-email">Email:</label>
+        <input type="email" id="login-email" required><br><br>
+        <label for="login-password">Password:</label>
+        <input type="password" id="login-password" required><br><br>
+        <button type="submit">Login</button>
+    </form>
+
+    <script src="https://www.gstatic.com/firebasejs/8.2.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.2.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.2.1/firebase-firestore.js"></script>
+
+    <script>
+        // Importar la configuración de Firebase
+        import firebaseConfig from './firebaseConfig.js';
+
+        let db
+        // Inicializar Firebase
+        document.getElementById('mode').addEventListener('change', (e) => {
+            const selectedMode = e.target.value;
+            console.log('Selected mode:', selectedMode);
+
+            // Ahora puedes realizar acciones adicionales dependiendo del valor seleccionado
+            if (selectedMode == 'deploy' || selectedMode == 'serve' ) {
+                console.log('Mode set to deploy. Perform necessary actions.');
+                // Inicializar Firebase
+                firebase.initializeApp(firebaseConfig);
+                db = firebase.firestore();
+            } else if (selectedMode === 'emulators') {
+                console.log('Mode set to emulators. Perform necessary actions.');
+                // Inicializar Firebase
+                firebase.initializeApp(firebaseConfig);
+                // Apuntar al emulador
+                firebase.auth().useEmulator("http://localhost:9099");
+                db = firebase.firestore();
+                db.useEmulator('localhost', 8080);
+            }
+        });
+        
+        // Signup form submission
+        document.getElementById('signup-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const password = document.getElementById('signup-password').value;
+            const email = document.getElementById('signup-email').value
+
+            const userData = {
+                username: document.getElementById('username').value,
+                type: document.getElementById('type').value,
+                imgUrl:'',
+            };
+
+            // Crear un usuario y obtener el token ID
+            firebase.auth().createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    console.log('User signed up:', userCredential.user.email);
+                    // Crear un usuario en la colección 'users'
+                    return db.collection('users').doc(userCredential.user.uid).set({
+                        ...userData,
+                        email: userCredential.user.email,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    }).then(() => {
+                        return userCredential.user.getIdToken(); // Asegúrate de devolver esta promesa aquí
+                    });
+                })
+                .then((idToken) => {
+                    console.log('ID Token:', idToken);
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                });
+
+        });
+
+        // Login form submission
+        document.getElementById('login-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            // Iniciar sesión y obtener el token ID
+            firebase.auth().signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    console.log('User logged in:', userCredential.user.email);
+                    return userCredential.user.getIdToken();
+                })
+                .then((idToken) => {
+                    console.log('ID Token:', idToken);
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                });
+        });
+    </script>
+</body>
+</html>
